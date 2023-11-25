@@ -39,12 +39,41 @@ app.get('/product',async(req,res)=>{
     const result=await productsCollection.find().toArray();
     res.send(result);
 })
-app.get('/product/:id',async(req,res)=>{
-    const id=req.params.id;
-    const query ={_id:new ObjectId(id)}
-    const result = await productsCollection.findOne(query );
-    res.send(result);
- })
+// app.get('/product/:id',async(req,res)=>{
+//     const id=req.params.id;
+//     const query ={_id:new ObjectId(id)}
+//     const result = await productsCollection.findOne(query );
+//     res.send(result);
+//  })
+//  app.get('/searchByTag', async (req, res) => {
+//     try {
+//       const { tags } = req.query;
+//       const tagsArray = tags.split(',');
+  
+//       // Use the MongoDB collection to search products by tags
+//       const products = await productsCollection.find({ Tags: { $in: tagsArray } }).toArray();
+  
+//       res.json(products);
+//     } catch (error) {
+//       console.error(error);
+//       res.status(500).json({ error: 'Internal Server Error' });
+//     }
+//   });
+  app.get('/product/searchByTag', async (req, res) => {
+    try {
+      const { Tags } = req.query;
+      const tagsArray = Tags.split(',');
+
+      // Use the MongoDB collection to search products by tags
+      const products = await productsCollection.find({ Tags: { $in: tagsArray } }).toArray();
+
+      res.json(products);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+  
 
 
 
