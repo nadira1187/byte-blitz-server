@@ -41,19 +41,61 @@ const userCollection=client.db('blitzDb').collection('users');
 //jwt related
 app.post('/jwt',async(req,res)=>{
   const user=req.body;
-  const token=jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{
-    expiresIn:'1h'
+  const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+    expiresIn: '1h'
   });
-  res.send({token})
+  res.send({ token });
+  
 })
 const verifyToken=(req,res,next)=>{
-  console.log('inside verify token',req.headers);
-  if(req.headers.authorization){
+ // console.log('inside verify token',req.headers);
+  if(!req.headers.authorization){
     return res.status(401).send({message:'forbidden access'})
+  }
+  const token = req.headers.authorization.split(' ')[1];
+  console.log('Received Token:', token);
+
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).send({ message: 'token expired' });
+        }
+        return res.status(401).send({ message: 'unauthorized access' });
+    }
+
+    req.decoded = decoded;
+    next();
+});
+
+}
+const verifyAdmin = async (req, res, next) => {
+  const email = req.decoded.email;
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  const isAdmin = user?.role === 'admin';
+  if (!isAdmin) {
+    return res.status(403).send({ message: 'forbidden access' });
   }
   next();
 }
+const verifyModerator = async (req, res, next) => {
+  const email = req.decoded.email;
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  const isModerator = user?.role === 'moderator';
+  if (!isModerator) {
+    return res.status(403).send({ message: 'forbidden access' });
+  }
+  next();
+}
+
 //user related
+app.get('/user',verifyToken,verifyAdmin,async(req,res)=>{
+  //console.log(req.headers)
+  const result=await userCollection.find().toArray();
+  res.send(result)
+})
 app.post('/users',async(req,res)=>{
   const user =req.body;
   const query ={email:user.email}
@@ -65,11 +107,7 @@ app.post('/users',async(req,res)=>{
   const result=await userCollection.insertOne(user);
   res.send(result);
 })
-app.get('/user',verifyToken,async(req,res)=>{
-  //console.log(req.headers)
-  const result=await userCollection.find().toArray();
-  res.send(result)
-})
+
 app.get('/user/:email', (req, res) => {
   const userEmail = req.params.email;
 
@@ -82,6 +120,36 @@ app.get('/user/:email', (req, res) => {
       res.json({ user });
     })
   });
+  app.get('/users/admin/:email', verifyToken,verifyAdmin, async (req, res) => {
+    const email = req.params.email;
+    console.log(req.decoded.email);
+    if (email !== req.decoded.email) {
+      return res.status(403).send({ message: 'forbidden access' })
+    }
+
+    const query = { email: email };
+    const user = await userCollection.findOne(query);
+    //let admin = false;
+    if (user) {
+      admin = user?.role === 'admin';
+    }
+    res.send( admin );
+  })
+  app.get('/user/moderator/:email', verifyToken,verifyModerator, async (req, res) => {
+    const email = req.params.email;
+    console.log(req.decoded.email);
+    if (email !== req.decoded.email) {
+      return res.status(403).send({ message: 'forbidden access' })
+    }
+
+    const query = { email: email };
+    const user = await userCollection.findOne(query);
+    //let admin = false;
+    if (user) {
+      moderator = user?.role === 'moderator';
+    }
+    res.send( moderator );
+  })
   app.patch('/users/admin/:id', async (req, res) => {
     const id = req.params.id;
     const query = { _id:new ObjectId(id)  };
@@ -161,6 +229,42 @@ app.get('/products/:id',async(req,res)=>{
     const result=await reviewCollection.find(query).toArray();
     res.send(result);
  })
+ // Assuming you have a MongoDB connection and productsCollection set up
+
+app.get('/reviewproducts', async (req, res) => {
+  try {
+      const products = await productsCollection.find().sort({ status: 1 }).toArray();
+      // Sorting based on the 'status' field in ascending order (1 for ascending, -1 for descending)
+
+      // Render your page with the products data
+      res.send( products );
+  } catch (error) {
+      console.error('Error fetching products:', error);
+      res.status(500).send('Internal Server Error');
+  }
+});
+app.get('/featuredproducts', async (req, res) => {
+ 
+      const featuredProducts = await productsCollection.find({ Featured: true })
+          .sort({ Date: -1 }) // Sorting based on the 'Date' field in descending order
+          .toArray();
+
+      // Render your page with the featured products data
+      res.send( featuredProducts );
+
+});
+app.get('/topvoted', async (req, res) => {
+  
+      const topVotedProducts = await productsCollection.find()
+          .sort({ vote: -1 }) 
+          .limit(6) 
+          .toArray();
+
+    
+      res.send( topVotedProducts);
+});
+
+
   app.post('/reviews',async(req,res)=>{
     const review=req.body;
     const result=await reviewCollection.insertOne(review);
@@ -176,7 +280,28 @@ app.get('/products/:id',async(req,res)=>{
   
 
  })
-  
+ app.patch('/report/:id',async(req,res)=>{
+  const {id}=req.params;
+  const result = await productsCollection.updateOne(
+      { _id:new ObjectId(id) },
+      { $inc: { vote: 1 } }
+    );
+    res.send(result)
+
+
+})
+app.patch('/featured/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id:new ObjectId(id)  };
+  const updatedDoc = {
+    $set: {
+      Featured: true
+    }
+  };
+  const result = await productsCollection.updateOne(query, updatedDoc, { upsert: true });
+  res.send(result)
+})
+
 
 
 
