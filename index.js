@@ -238,6 +238,10 @@ app.get('/reviewproducts', async (req, res) => {
       res.status(500).send('Internal Server Error');
   }
 });
+app.get('/reportproducts',async(req,res)=>{
+  const result= await productsCollection.find({ report: { $gt: 0 } }).toArray();
+  res.send(result);
+})
 app.get('/featuredproducts', async (req, res) => {
  
       const featuredProducts = await productsCollection.find({ Featured: true })
@@ -296,7 +300,7 @@ app.post('/addproduct', async (req, res) => {
   const {id}=req.params;
   const result = await productsCollection.updateOne(
       { _id:new ObjectId(id) },
-      { $inc: { vote: 1 } }, { upsert: true }
+      { $inc: { report: 1 } }, { upsert: true }
     );
     res.send(result)
 
