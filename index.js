@@ -10,6 +10,7 @@ const express=require('express');
 const app=express();
 const cors=require('cors');
 require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 var jwt = require('jsonwebtoken');
 
 const port=process.env.PORT||5000;
@@ -190,7 +191,7 @@ app.get('/product', async (req, res) => {
 
     try {
         const result = await productsCollection
-            .find()
+            .find({ Status: 'accepted' })
             .skip(skip)
             .limit(itemsPerPage)
             .toArray();
@@ -233,10 +234,7 @@ app.get('/products/:id',async(req,res)=>{
 
 app.get('/reviewproducts', async (req, res) => {
   try {
-      const products = await productsCollection.find().sort({ status: 1 }).toArray();
-      // Sorting based on the 'status' field in ascending order (1 for ascending, -1 for descending)
-
-      // Render your page with the products data
+      const products = await productsCollection.find().sort({ Status: -1 }).toArray();
       res.send( products );
   } catch (error) {
       console.error('Error fetching products:', error);
@@ -274,7 +272,7 @@ app.get('/topvoted', async (req, res) => {
     const {id}=req.params;
     const result = await productsCollection.updateOne(
         { _id:new ObjectId(id) },
-        { $inc: { vote: 1 } }
+        { $inc: { vote: 1 } }, { upsert: true }
       );
       res.send(result)
   
@@ -284,7 +282,7 @@ app.get('/topvoted', async (req, res) => {
   const {id}=req.params;
   const result = await productsCollection.updateOne(
       { _id:new ObjectId(id) },
-      { $inc: { vote: 1 } }
+      { $inc: { vote: 1 } }, { upsert: true }
     );
     res.send(result)
 
@@ -301,6 +299,44 @@ app.patch('/featured/:id', async (req, res) => {
   const result = await productsCollection.updateOne(query, updatedDoc, { upsert: true });
   res.send(result)
 })
+app.patch('/accept/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id:new ObjectId(id)  };
+  const updatedDoc = {
+    $set: {
+      Status: 'accepted'
+    }
+  };
+  const result = await productsCollection.updateOne(query, updatedDoc, { upsert: true });
+  res.send(result)
+})
+app.patch('/reject/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id:new ObjectId(id)  };
+  const updatedDoc = {
+    $set: {
+      Status: 'rejected'
+    }
+  };
+  const result = await productsCollection.updateOne(query, updatedDoc, { upsert: true });
+  res.send(result)
+})
+//payment intent
+app.post('/create-payment-intent', async (req, res) => {
+  const { price } = req.body;
+  const amount = parseInt(price * 100);
+  console.log(amount, 'amount inside the intent')
+
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amount,
+    currency: 'usd',
+    payment_method_types: ['card']
+  });
+
+  res.send({
+    clientSecret: paymentIntent.client_secret
+  })
+});
 
 
 
