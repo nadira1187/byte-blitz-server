@@ -1,11 +1,8 @@
-const EventEmitter = require('events');
-const emitter = new EventEmitter();
+// const EventEmitter = require('events');
+// const emitter = new EventEmitter();
 
-// Increase the limit to 15
-emitter.setMaxListeners(20);
-
-
-
+// // Increase the limit to 15
+// emitter.setMaxListeners(20);
 const express=require('express');
 const app=express();
 const cors=require('cors');
@@ -35,7 +32,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+   // await client.connect();
 const productsCollection=client.db("blitzDb").collection("products");
 const reviewCollection=client.db('blitzDb').collection('reviews');
 const userCollection=client.db('blitzDb').collection('users');
@@ -261,6 +258,23 @@ app.get('/topvoted', async (req, res) => {
     
       res.send( topVotedProducts);
 });
+app.get('/myproduct',async(req,res)=>{
+  let query ={};
+  
+  if(req.query?.email)
+  {
+      query={Owner_email:req.query.email}
+  }
+  const result =await productsCollection.find(query).toArray();
+  console.log(result);
+
+  res.send(result)
+})
+app.post('/addproduct', async (req, res) => {
+  const item = req.body;
+  const result = await productsCollection.insertOne(item);
+  res.send(result);
+});
 
 
   app.post('/reviews',async(req,res)=>{
@@ -343,7 +357,7 @@ app.post('/create-payment-intent', async (req, res) => {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    //await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
