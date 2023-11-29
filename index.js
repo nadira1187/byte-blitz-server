@@ -1,8 +1,4 @@
-// const EventEmitter = require('events');
-// const emitter = new EventEmitter();
 
-// // Increase the limit to 15
-// emitter.setMaxListeners(20);
 const express=require('express');
 const app=express();
 const cors=require('cors');
@@ -339,6 +335,28 @@ app.patch('/reject/:id', async (req, res) => {
   const result = await productsCollection.updateOne(query, updatedDoc, { upsert: true });
   res.send(result)
 })
+app.patch('/confirmpayment',async(req,res)=>{
+  const {  userEmail } = req.body;
+
+  const result = await userCollection.updateOne(
+    { email: userEmail },
+    { $set: { isSubscibed: true } }
+  );
+  res.send(result)
+
+})
+app.delete('/deleteproduct/:id', async (req, res) => {
+  const productId = req.params.id;
+
+  try {
+    const result = await productsCollection.deleteOne({ _id: new ObjectId(productId) });
+
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 //payment intent
 app.post('/create-payment-intent', async (req, res) => {
   const { price } = req.body;
