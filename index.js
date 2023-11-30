@@ -398,6 +398,25 @@ app.delete('/deleteproduct/:id', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+app.delete("/delete/:id", async (req, res) => {
+  const productId = req.params.id;
+
+  try {
+    const result = await productsCollection.deleteOne({
+      _id: new ObjectId(productId),
+    });
+
+    if (result.deletedCount > 0) {
+      res.json({ success: true, message: "Product deleted successfully" });
+    } else {
+      res.status(404).json({ success: false, message: "Product not found" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
 //payment intent
 app.post('/create-payment-intent', async (req, res) => {
   const { price } = req.body;
