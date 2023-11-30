@@ -270,6 +270,22 @@ app.get('/myproduct',async(req,res)=>{
 
   res.send(result)
 })
+app.get('/piechartdata', async (req, res) => {
+  try {
+    const productCount = await productsCollection.countDocuments();
+    const reviewCount = await reviewCollection.countDocuments();
+    const userCount = await userCollection.countDocuments();
+
+    res.json({
+      productCount,
+      reviewCount,
+      userCount
+    });
+  } catch (error) {
+    console.error('Error fetching data for pie chart:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
 app.post('/addproduct', async (req, res) => {
   const item = req.body;
   const result = await productsCollection.insertOne(item);
@@ -345,6 +361,31 @@ app.patch('/confirmpayment',async(req,res)=>{
   res.send(result)
 
 })
+app.put('/update/:id', async (req, res) => {
+  try {
+      const productId = req.params.id;
+
+      const updatedProductInfo = {
+          Product_name: req.body.Product_name,
+          Description: req.body.Description,
+          External_Links: req.body.External_Links,
+          Tags: req.body.Tags,
+          Product_image:req.body.Product_image // Assuming Multer saves the file path
+      };
+
+      // Update the product in the database
+      const result = await productsCollection.updateOne({ _id: new ObjectId(productId) }, { $set: updatedProductInfo });
+
+      if (result.modifiedCount > 0) {
+          return res.json({ success: true, message: 'Product updated successfully' });
+      } else {
+          return res.status(404).json({ success: false, message: 'Product not found' });
+      }
+  } catch (error) {
+      console.error('Error updating product:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
 app.delete('/deleteproduct/:id', async (req, res) => {
   const productId = req.params.id;
 
