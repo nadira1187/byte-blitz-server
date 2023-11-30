@@ -32,6 +32,7 @@ async function run() {
 const productsCollection=client.db("blitzDb").collection("products");
 const reviewCollection=client.db('blitzDb').collection('reviews');
 const userCollection=client.db('blitzDb').collection('users');
+const couponCollection=client.db('blitzDb').collection('coupon');
 //jwt related
 app.post('/jwt',async(req,res)=>{
   const user=req.body;
@@ -238,6 +239,10 @@ app.get('/reportproducts',async(req,res)=>{
   const result= await productsCollection.find({ report: { $gt: 0 } }).toArray();
   res.send(result);
 })
+app.get('/coupons',async(req,res)=>{
+  const result=await couponCollection.find().toArray();
+  res.send(result);
+})
 app.get('/featuredproducts', async (req, res) => {
  
       const featuredProducts = await productsCollection.find({ Featured: true })
@@ -291,7 +296,11 @@ app.post('/addproduct', async (req, res) => {
   const result = await productsCollection.insertOne(item);
   res.send(result);
 });
-
+app.post('/coupon',async(req,res)=>{
+  const item = req.body;
+  const result = await couponCollection.insertOne(item);
+  res.send(result);
+})
 
   app.post('/reviews',async(req,res)=>{
     const review=req.body;
@@ -386,6 +395,31 @@ app.put('/update/:id', async (req, res) => {
       res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
+app.patch('/couponss/:id', async (req, res) => {
+  try {
+      const productId = req.params.id;
+
+      const updatedProductInfo = {
+          code: req.body.code,
+          description: req.body.description,
+          amount: req.body.amount,
+          Date: req.body.Date,
+          
+      };
+
+      // Update the product in the database
+      const result = await couponCollection.updateOne({ _id: new ObjectId(productId) }, { $set: updatedProductInfo });
+
+      if (result.modifiedCount > 0) {
+          return res.json({ success: true, message: 'Product updated successfully' });
+      } else {
+          return res.status(404).json({ success: false, message: 'Product not found' });
+      }
+  } catch (error) {
+      console.error('Error updating product:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
 app.delete('/deleteproduct/:id', async (req, res) => {
   const productId = req.params.id;
 
@@ -416,6 +450,25 @@ app.delete("/delete/:id", async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+// Add this route in your server code
+app.delete('/coupons/:id', async (req, res) => {
+  const couponId = req.params.id;
+
+  try {
+      // Assuming you have a MongoDB connection and couponsCollection set up
+      const result = await couponCollection.deleteOne({ _id: new ObjectId(couponId) });
+
+      if (result.deletedCount > 0) {
+          res.json({ message: 'Coupon deleted successfully' });
+      } else {
+          res.status(404).json({ error: 'Coupon not found' });
+      }
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 
 //payment intent
 app.post('/create-payment-intent', async (req, res) => {
